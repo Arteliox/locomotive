@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/brody192/locomotive/internal/config"
+	"github.com/brody192/locomotive/internal/util"
 )
 
 var acceptedStatusCodes = []int{
@@ -22,10 +23,10 @@ var acceptedStatusCodes = []int{
 
 const maxErrorBodySize = 8192
 
-func SendRawWebhook(ctx context.Context, logs []byte, url url.URL, defaultHeaders map[string]string, additionalHeaders config.AdditionalHeaders, client *http.Client) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url.String(), bytes.NewReader(logs))
+func SendRawWebhook(ctx context.Context, logs []byte, webhookUrl url.URL, defaultHeaders map[string]string, additionalHeaders config.AdditionalHeaders, client *http.Client) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookUrl.String(), bytes.NewReader(logs))
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", util.RedactURLError(err, webhookUrl))
 	}
 
 	// Default headers
@@ -42,7 +43,7 @@ func SendRawWebhook(ctx context.Context, logs []byte, url url.URL, defaultHeader
 
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to send webhook request: %w", err)
+		return fmt.Errorf("failed to send webhook request: %w", util.RedactURLError(err, webhookUrl))
 	}
 
 	defer res.Body.Close()

@@ -42,6 +42,7 @@ Configuration is done through environment variables. See explanation and example
 
     **Required**.
 
+    - Both the older UUID tokens and the prefixed account tokens Railway now issues (`rlwy_acct_...`) are accepted.
     - Project-level tokens do not work.
     - Team-scoped tokens do not work.
 
