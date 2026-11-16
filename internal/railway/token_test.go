@@ -43,6 +43,7 @@ func TestParseTokenRejectsABadValueWithoutPrintingIt(t *testing.T) {
 		{"inner space", "rlwy_acct_secretpart1 secretpart2"},
 		{"control character", "rlwy_acct_secretpart1\x00secretpart2"},
 		{"inner newline", "rlwy_acct_secretpart1\nsecretpart2"},
+		{"all-zero uuid", "00000000-0000-0000-0000-000000000000"},
 		{"non ascii", "rlwy_acct_secretpart1ésecretpart2"},
 	}
 

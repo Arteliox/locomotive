@@ -14,9 +14,10 @@ var ErrInvalidToken = errors.New("RAILWAY_API_KEY is not a valid token")
 // ParseToken checks and normalises a Railway API token read from configuration. Railway
 // has issued tokens as UUIDs and, more recently, as prefixed strings (rlwy_acct_...,
 // rlwy_wksp_...), so the token is treated as an opaque string. Surrounding whitespace is
-// trimmed. A blank token, or one holding a space or a control character, is rejected. A
-// UUID token is written in its canonical lowercase form, exactly as it was when the token
-// was parsed as a UUID, so an existing configuration sends the same header as before.
+// trimmed. A blank or all-zero token, or one holding a space, a control character or a
+// non-ASCII character, is rejected. A UUID token is written in its canonical lowercase
+// form, exactly as it was when the token was parsed as a UUID, so an existing
+// configuration sends the same header as before.
 func ParseToken(raw string) (string, error) {
 	token := strings.TrimSpace(raw)
 	if token == "" {
@@ -30,6 +31,11 @@ func ParseToken(raw string) (string, error) {
 	}
 
 	if u, err := uuid.FromString(token); err == nil {
+		// The all-zero UUID was refused before as an empty token; keep refusing it.
+		if u == uuid.Nil {
+			return "", ErrInvalidToken
+		}
+
 		return u.String(), nil
 	}
 

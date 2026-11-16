@@ -84,11 +84,19 @@ func init() {
 					envVarTrimmed = "https://" + envVarTrimmed
 				}
 
-				if u, err := url.ParseRequestURI(envVarTrimmed); err != nil {
+				u, err := url.ParseRequestURI(envVarTrimmed)
+				if err != nil {
 					return nil, errInvalidWebhookURL
-				} else {
-					return *u, nil
 				}
+
+				// The sender parses the URL again with url.Parse, which splits off a
+				// fragment where ParseRequestURI does not. Refuse here a URL it would
+				// refuse there, so that failure cannot quote the URL later.
+				if _, err := url.Parse(u.String()); err != nil {
+					return nil, errInvalidWebhookURL
+				}
+
+				return *u, nil
 			},
 		},
 	}); err != nil {
