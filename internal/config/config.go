@@ -1,6 +1,7 @@
 package config
 
 import (
+	stderrors "errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -10,12 +11,21 @@ import (
 	"strings"
 
 	"github.com/brody192/locomotive/internal/logger"
+	"github.com/brody192/locomotive/internal/railway"
 	"github.com/caarlos0/env/v11"
 	"github.com/flexstack/uuid"
 	"github.com/joho/godotenv"
 )
 
 var Global = config{}
+
+// errInvalidWebhookURL replaces the URL parser's own error, which quotes the whole URL,
+// credentials included.
+var errInvalidWebhookURL = stderrors.New("WEBHOOK_URL is not a valid URL")
+
+// secretErrors are parse errors for values that hold a secret. Each is logged on its own,
+// without the field wrapper, so the message is exactly the sentence and nothing else.
+var secretErrors = []error{railway.ErrInvalidToken, errInvalidWebhookURL}
 
 func init() {
 	if _, err := os.Stat(".env"); err == nil {
@@ -30,6 +40,14 @@ func init() {
 	if err := env.ParseWithOptions(&Global, env.Options{
 		Prefix: "LOCOMOTIVE_",
 		FuncMap: map[reflect.Type]env.ParserFunc{
+			reflect.TypeFor[railwayToken](): func(envVar string) (any, error) {
+				token, err := railway.ParseToken(envVar)
+				if err != nil {
+					return nil, err
+				}
+
+				return railwayToken(token), nil
+			},
 			reflect.TypeFor[uuid.UUID](): func(envVar string) (any, error) {
 				return uuid.FromString(strings.TrimSpace(envVar))
 			},
@@ -67,7 +85,7 @@ func init() {
 				}
 
 				if u, err := url.ParseRequestURI(envVarTrimmed); err != nil {
-					return nil, err
+					return nil, errInvalidWebhookURL
 				} else {
 					return *u, nil
 				}
@@ -78,6 +96,17 @@ func init() {
 			errors = append(errors, er.Errors...)
 		} else {
 			errors = append(errors, err)
+		}
+	}
+
+	for i, err := range errors {
+		var parseErr env.ParseError
+		if stderrors.As(err, &parseErr) {
+			for _, secretErr := range secretErrors {
+				if stderrors.Is(parseErr.Err, secretErr) {
+					errors[i] = secretErr
+				}
+			}
 		}
 	}
 
